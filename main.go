@@ -1,71 +1,80 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	tgbotapi "gopkg.in/telegram-bot-api.v4"
+	"furrybot/commands"
+	"furrybot/config"
+	"furrybot/images"
 	"log"
-	"math/rand"
-	"os"
-	"time"
+
+	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
 
-type Config struct {
-	TelegramBotToken string `json:"TelegramBotToken"`
-	PicsFolder       string `json:"picsFolder"`
+var commandsMap = map[string]commands.Command{
+	"/get_furry":      commands.GetFurryPic,
+	"/get_furry_list": commands.ListAvailablePics,
 }
 
-var configuration = Config{}
-var configFilePath = "config.json"
-var files []os.DirEntry
+func createChatContext(settings *config.Settings, repository images.IImageRepository) commands.ChatContext {
+	return commands.ChatContext{
+		Settings:        settings,
+		ImageRepository: repository,
+	}
+}
 
 func main() {
-	readConfig()
-	files, _ = os.ReadDir(configuration.PicsFolder)
-	bot, _ := tgbotapi.NewBotAPI(configuration.TelegramBotToken)
-	log.Printf("Authorized on account %s", bot.Self.UserName)
+	settings, err := config.ReadSettingsFromJson(config.GetSettingsPath())
+
+	if err != nil {
+		log.Fatalln("Failed to load configuration:", err)
+	}
+
+	defaultRepository, err := images.NewLocalFilesImageRepository(settings.PicsFolder)
+
+	if err != nil {
+		log.Fatalln("Failed to create repository:", err)
+	}
+
+	log.Printf("Image repository initialized, loaded %v pics\n", len(defaultRepository.GetImages()))
+
+	// TODO: Each chat should have its own context for
+	// users to configure, for example, which repository
+	// to use
+	ctx := createChatContext(&settings, defaultRepository)
+
+	bot, err := tgbotapi.NewBotAPI(settings.TelegramBotToken)
+
+	if err != nil {
+		log.Fatalln("Failed to create bot:", err)
+	}
+
+	log.Printf("Bot initialized. Authenticated as %v\n", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	updates, _ := bot.GetUpdatesChan(u)
-	msgCh := make(chan tgbotapi.Update)
+	updatesChannel, err := bot.GetUpdatesChan(u)
 
-	go func() {
-		for update := range updates {
-			msgCh <- update
-		}
-	}()
+	if err != nil {
+		log.Fatalln("Failed to create updates channel:", err)
+	}
 
-	for update := range msgCh {
-		go handleMessage(update, bot)
+	log.Println("Waiting for messages...")
+	for update := range updatesChannel {
+		go handleUpdate(update, bot, &ctx)
 	}
 }
 
-func handleMessage(update tgbotapi.Update, bot *tgbotapi.BotAPI) {
+func handleUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI, ctx *commands.ChatContext) {
 	if update.Message == nil {
 		return
 	}
 	log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
-	if update.Message.Text == "/get_furry" {
-		filePath := configuration.PicsFolder + getRandomImage()
-		msg := tgbotapi.NewPhotoUpload(update.Message.Chat.ID, filePath)
-		bot.Send(msg)
-		log.Printf("Response %s", filePath)
+	for k, command := range commandsMap {
+		if update.Message.Text == k {
+			reply := command(update.Message, ctx)
+			bot.Send(reply)
+			break
+		}
 	}
-}
-func getRandomImage() string {
-	rand.Seed(time.Now().UTC().UnixNano())
-	return files[rand.Intn(len(files))].Name()
-}
-func readConfig() {
-	f, err := os.Open(configFilePath)
-
-	decoder := json.NewDecoder(f)
-	err = decoder.Decode(&configuration)
-	if err != nil {
-		fmt.Println("An error occurred while reading config")
-	}
-	fmt.Println("Config loaded")
 }
