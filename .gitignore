@@ -1,3 +1,6 @@
 .idea
 vendor
 pics
+build
+settings.json
+settings.dev.json

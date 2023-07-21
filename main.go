@@ -28,6 +28,8 @@ func main() {
 		log.Fatalln("Failed to load configuration:", err)
 	}
 
+	log.Println("Settings loaded")
+
 	defaultRepository, err := images.NewLocalFilesImageRepository(settings.PicsFolder)
 
 	if err != nil {
