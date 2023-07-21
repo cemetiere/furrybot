@@ -2,8 +2,8 @@ package commands
 
 import (
 	"fmt"
-	"furrybot/config"
 	"furrybot/images"
+	"log"
 
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
@@ -20,7 +20,6 @@ type Command struct {
 
 type ChatContext struct {
 	ImageRepository images.IImageRepository
-	Settings        *config.Settings
 }
 
 func CreateMessageFullMatchPredicate(commandName string) CommandExecutionPredicate {
@@ -30,7 +29,13 @@ func CreateMessageFullMatchPredicate(commandName string) CommandExecutionPredica
 }
 
 func GetFurryPic(message *tgbotapi.Message, ctx *ChatContext) tgbotapi.Chattable {
-	image := ctx.ImageRepository.GetRandomImagePath()
+	image, err := ctx.ImageRepository.GetRandomImagePath()
+
+	if err != nil {
+		log.Printf("Failed to fetch image from repository. Error: %s", err)
+		return tgbotapi.NewMessage(message.Chat.ID, "Не удалось получить картинку, попробуйте ещё раз позже")
+	}
+
 	msg := tgbotapi.NewPhotoUpload(message.Chat.ID, image)
 	return msg
 }

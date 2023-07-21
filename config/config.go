@@ -5,13 +5,16 @@ import (
 	"os"
 )
 
-type Settings struct {
-	TelegramBotToken string `json:"telegramBotToken"`
-	PicsFolder       string `json:"picsFolder"`
+type SettingsModel struct {
+	TelegramBotToken  string `json:"telegramBotToken"`
+	PicsFolder        string `json:"picsFolder"`
+	ReactorFolderName string `json:"reactorFolderName"`
 }
 
 const CONFIG_ENV = "FURRYBOT_CONFIG_FILE"
 const DEFAULT_CONFIG = "defaultSettings.json"
+
+var Settings = SettingsModel{}
 
 // Returns either a predefined file name or
 // reads config file path from environment variable
@@ -25,16 +28,16 @@ func GetSettingsPath() string {
 }
 
 // Reads and parses configs
-func ReadSettingsFromJson(filePath string) (Settings, error) {
+func ReadSettingsFromJson(filePath string) error {
 	f, _ := os.Open(filePath)
 
-	settings := Settings{}
+	Settings = SettingsModel{}
 
 	decoder := json.NewDecoder(f)
 
-	if err := decoder.Decode(&settings); err != nil {
-		return settings, err
+	if err := decoder.Decode(&Settings); err != nil {
+		return err
 	}
 
-	return settings, nil
+	return nil
 }

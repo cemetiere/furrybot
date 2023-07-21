@@ -14,15 +14,14 @@ var commandsList = []commands.Command{
 	commands.GetFurryPicCommand,
 }
 
-func createChatContext(settings *config.Settings, repository images.IImageRepository) commands.ChatContext {
+func createChatContext(repository images.IImageRepository) commands.ChatContext {
 	return commands.ChatContext{
-		Settings:        settings,
 		ImageRepository: repository,
 	}
 }
 
 func main() {
-	settings, err := config.ReadSettingsFromJson(config.GetSettingsPath())
+	err := config.ReadSettingsFromJson(config.GetSettingsPath())
 
 	if err != nil {
 		log.Fatalln("Failed to load configuration:", err)
@@ -30,20 +29,22 @@ func main() {
 
 	log.Println("Settings loaded")
 
-	defaultRepository, err := images.NewLocalFilesImageRepository(settings.PicsFolder)
+	// defaultRepository, err := images.NewLocalFilesImageRepository(settings.PicsFolder)
 
-	if err != nil {
-		log.Fatalln("Failed to create repository:", err)
-	}
+	// if err != nil {
+	// 	log.Fatalln("Failed to create repository:", err)
+	// }
 
-	log.Printf("Image repository initialized, loaded %v pics\n", len(defaultRepository.GetImages()))
+	// log.Printf("Image repository initialized, loaded %v pics\n", len(defaultRepository.GetImages()))
+
+	defaultRepository := &images.ReactorImageRepository{}
 
 	// TODO: Each chat should have its own context for
 	// users to configure, for example, which repository
 	// to use
-	ctx := createChatContext(&settings, defaultRepository)
+	ctx := createChatContext(defaultRepository)
 
-	bot, err := tgbotapi.NewBotAPI(settings.TelegramBotToken)
+	bot, err := tgbotapi.NewBotAPI(config.Settings.TelegramBotToken)
 
 	if err != nil {
 		log.Fatalln("Failed to create bot:", err)

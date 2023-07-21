@@ -1,6 +1,7 @@
 package images
 
 import (
+	"furrybot/reactor"
 	"math/rand"
 	"os"
 	"path"
@@ -9,7 +10,7 @@ import (
 )
 
 type IImageRepository interface {
-	GetRandomImagePath() string
+	GetRandomImagePath() (string, error)
 	GetImages() []string
 }
 
@@ -38,12 +39,22 @@ func NewLocalFilesImageRepository(imageFolder string) (*LocalFilesImageRepositor
 	return &repository, nil
 }
 
-func (repository *LocalFilesImageRepository) GetRandomImagePath() string {
+func (repository *LocalFilesImageRepository) GetRandomImagePath() (string, error) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	randomIndex := rand.Intn(len(repository.availableImages))
-	return path.Join(repository.imageFolder, repository.availableImages[randomIndex])
+	return path.Join(repository.imageFolder, repository.availableImages[randomIndex]), nil
 }
 
 func (repository *LocalFilesImageRepository) GetImages() []string {
 	return repository.availableImages
+}
+
+type ReactorImageRepository struct{}
+
+func (r *ReactorImageRepository) GetRandomImagePath() (string, error) {
+	return reactor.FetchFromReactor()
+}
+
+func (r *ReactorImageRepository) GetImages() []string {
+	return []string{}
 }
