@@ -14,6 +14,7 @@ var commandsList = []commands.Command{
 	commands.GetFurryPicCommand,
 	commands.ShowRepositorySelectionCommand,
 	commands.SelectRepositoryCommand,
+	commands.OlegShipulinCommand,
 }
 
 func createChatContext(repository images.IImageRepository) commands.ChatContext {

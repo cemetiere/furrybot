@@ -113,3 +113,14 @@ var SelectRepositoryCommand = Command{
 		return tgbotapi.NewMessage(u.CallbackQuery.Message.Chat.ID, fmt.Sprintf("Выбран источник \"%s\"", repository_name))
 	},
 }
+
+var OlegShipulinCommand = Command{
+	CreateMessageFullMatchPredicate("oleg_shipulin"),
+	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
+		if u.Message.From.UserName == "real_chilll" {
+			return tgbotapi.NewMessage(u.Message.Chat.ID, "ТЫ ОЛЕГ ШИПУЛИН 🔥🔥🔥🔥🔥")
+		} else {
+			return tgbotapi.NewMessage(u.Message.Chat.ID, "ты не олег шипулин 😿")
+		}
+	},
+}
