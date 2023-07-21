@@ -8,17 +8,36 @@ import (
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
 
-type Command func(*tgbotapi.Message, *ChatContext) tgbotapi.Chattable
+type CommandExecutor func(*tgbotapi.Message, *ChatContext) tgbotapi.Chattable
+
+// Checks whether to execute a command or not
+type CommandExecutionPredicate func(*tgbotapi.Update, *ChatContext) bool
+
+type Command struct {
+	Predicate CommandExecutionPredicate
+	Executor  CommandExecutor
+}
 
 type ChatContext struct {
 	ImageRepository images.IImageRepository
 	Settings        *config.Settings
 }
 
+func CreateMessageFullMatchPredicate(commandName string) CommandExecutionPredicate {
+	return func(u *tgbotapi.Update, ctx *ChatContext) bool {
+		return u.Message.Command() == commandName
+	}
+}
+
 func GetFurryPic(message *tgbotapi.Message, ctx *ChatContext) tgbotapi.Chattable {
 	image := ctx.ImageRepository.GetRandomImagePath()
 	msg := tgbotapi.NewPhotoUpload(message.Chat.ID, image)
 	return msg
+}
+
+var GetFurryPicCommand = Command{
+	CreateMessageFullMatchPredicate("get_furry"),
+	GetFurryPic,
 }
 
 func ListAvailablePics(message *tgbotapi.Message, ctx *ChatContext) tgbotapi.Chattable {
@@ -34,4 +53,9 @@ func ListAvailablePics(message *tgbotapi.Message, ctx *ChatContext) tgbotapi.Cha
 	}
 
 	return tgbotapi.NewMessage(message.Chat.ID, msg)
+}
+
+var GetFurryListCommand = Command{
+	CreateMessageFullMatchPredicate("get_furry_list"),
+	ListAvailablePics,
 }

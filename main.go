@@ -9,9 +9,9 @@ import (
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
 
-var commandsMap = map[string]commands.Command{
-	"/get_furry":      commands.GetFurryPic,
-	"/get_furry_list": commands.ListAvailablePics,
+var commandsList = []commands.Command{
+	commands.GetFurryListCommand,
+	commands.GetFurryPicCommand,
 }
 
 func createChatContext(settings *config.Settings, repository images.IImageRepository) commands.ChatContext {
@@ -70,12 +70,15 @@ func handleUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI, ctx *commands.Ch
 	if update.Message == nil {
 		return
 	}
-	log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+	log.Printf("[%s] %s | %s", update.Message.From.UserName, update.Message.Text, update.Message.Command())
 
-	for k, command := range commandsMap {
-		if update.Message.Text == k {
-			reply := command(update.Message, ctx)
-			bot.Send(reply)
+	for _, command := range commandsList {
+		if command.Predicate(&update, ctx) {
+			reply := command.Executor(update.Message, ctx)
+			_, err := bot.Send(reply)
+			if err != nil {
+				log.Printf("Failed to reply to [%s], error: %s", update.Message.From.UserName, err)
+			}
 			break
 		}
 	}
