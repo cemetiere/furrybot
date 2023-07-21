@@ -3,6 +3,13 @@ BUILD_DIR=build
 
 settings:
 	cp settings.example.json settings.dev.json
+	cp settings.example.json settings.json
+	@echo "----------------------------------------------"
+	@echo "Created settings based on example"
+	@echo "Please modify them before running the program"
+	@echo "\"settings.dev.json\" for local development"
+	@echo "\"settings.json\" for use in docker container"
+	@echo "----------------------------------------------"
 
 run: export FURRYBOT_CONFIG_FILE=settings.dev.json
 run: 
@@ -17,6 +24,9 @@ docker-build:
 
 up:
 	docker compose -f docker-compose.yaml up -d
+
+down:
+	docker compose -f docker-compose.yaml down
 
 logs:
 	docker compose -f docker-compose.yaml logs -f
