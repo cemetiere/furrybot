@@ -30,41 +30,37 @@ func CreateMessageFullMatchPredicate(commandName string) CommandExecutionPredica
 	}
 }
 
-func GetFurryPic(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
-	image, err := ctx.ImageRepository.GetRandomImagePath()
-
-	if err != nil {
-		log.Printf("Failed to fetch image from repository. Error: %s", err)
-		return tgbotapi.NewMessage(u.Message.Chat.ID, "Не удалось получить картинку, попробуйте ещё раз позже")
-	}
-
-	msg := tgbotapi.NewPhotoUpload(u.Message.Chat.ID, image)
-	return msg
-}
-
 var GetFurryPicCommand = Command{
 	CreateMessageFullMatchPredicate("get_furry"),
-	GetFurryPic,
-}
+	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
+		image, err := ctx.ImageRepository.GetRandomImagePath()
 
-func ListAvailablePics(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
-	msg := "List of available images: \n"
-
-	if len(ctx.ImageRepository.GetImages()) == 0 {
-		msg += "Empty (This source might not support image listing)"
-	} else {
-		for _, v := range ctx.ImageRepository.GetImages() {
-			msg += v + "\n"
+		if err != nil {
+			log.Printf("Failed to fetch image from repository. Error: %s", err)
+			return tgbotapi.NewMessage(u.Message.Chat.ID, "Не удалось получить картинку, попробуйте ещё раз позже")
 		}
-		msg += "Total: " + fmt.Sprint(len(ctx.ImageRepository.GetImages()))
-	}
 
-	return tgbotapi.NewMessage(u.Message.Chat.ID, msg)
+		msg := tgbotapi.NewPhotoUpload(u.Message.Chat.ID, image)
+		return msg
+	},
 }
 
 var GetFurryListCommand = Command{
 	CreateMessageFullMatchPredicate("get_furry_list"),
-	ListAvailablePics,
+	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
+		msg := "List of available images: \n"
+
+		if len(ctx.ImageRepository.GetImages()) == 0 {
+			msg += "Empty (This source might not support image listing)"
+		} else {
+			for _, v := range ctx.ImageRepository.GetImages() {
+				msg += v + "\n"
+			}
+			msg += "Total: " + fmt.Sprint(len(ctx.ImageRepository.GetImages()))
+		}
+
+		return tgbotapi.NewMessage(u.Message.Chat.ID, msg)
+	},
 }
 
 const SELECT_REPOSITORY_PREFIX = "select-repository:"
