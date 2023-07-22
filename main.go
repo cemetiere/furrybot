@@ -3,9 +3,11 @@ package main
 import (
 	"furrybot/commands"
 	"furrybot/config"
+	"furrybot/femboy"
 	"furrybot/images"
-	tgbotapi "gopkg.in/telegram-bot-api.v4"
 	"log"
+
+	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
 
 var commandsList = []commands.Command{
@@ -22,6 +24,7 @@ var commandsList = []commands.Command{
 func createChatContext(repository images.IImageRepository) commands.ChatContext {
 	return commands.ChatContext{
 		ImageRepository: repository,
+		FemboyGame:      femboy.NewFemboyGameService(),
 	}
 }
 

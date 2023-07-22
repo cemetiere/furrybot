@@ -9,6 +9,7 @@ type SettingsModel struct {
 	TelegramBotToken  string `json:"telegramBotToken"`
 	PicsFolder        string `json:"picsFolder"`
 	ReactorFolderName string `json:"reactorFolderName"`
+	FemboyCooldownMs  int64  `json:"femboyCooldownMs"`
 }
 
 const CONFIG_ENV = "FURRYBOT_CONFIG_FILE"

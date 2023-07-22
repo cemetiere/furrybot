@@ -1,5 +1,6 @@
 {
     "telegramBotToken": "hackme",
     "picsFolder": "pics",
-    "reactorFolderName": "pics/reactor"
+    "reactorFolderName": "pics/reactor",
+    "femboyCooldownMs": 30000
 }

@@ -3,13 +3,10 @@ package commands
 import (
 	"fmt"
 	"furrybot/config"
+	"furrybot/femboy"
 	"furrybot/images"
 	"log"
-	"math/rand"
-	"sort"
-	"strconv"
 	"strings"
-	"time"
 
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
@@ -26,29 +23,7 @@ type Command struct {
 
 type ChatContext struct {
 	ImageRepository images.IImageRepository
-	FemboyPlayers   map[int]FemboyPlayer
-}
-type FemboyPlayer struct {
-	Username string `json:"username"`
-	Wins     int    `json:"wins"`
-}
-
-func (fp *FemboyPlayer) MakeWinner() {
-	fp.Wins++
-}
-func (ctx *ChatContext) GetIds() []int {
-	keys := make([]int, 0, len(ctx.FemboyPlayers))
-	for k := range ctx.FemboyPlayers {
-		keys = append(keys, k)
-	}
-	return keys
-}
-func (ctx *ChatContext) GetPlayers() []FemboyPlayer {
-	values := make([]FemboyPlayer, 0, len(ctx.FemboyPlayers))
-	for _, v := range ctx.FemboyPlayers {
-		values = append(values, v)
-	}
-	return values
+	FemboyGame      *femboy.FemboyGameService
 }
 
 func CreateMessageFullMatchPredicate(commandName string) CommandExecutionPredicate {
@@ -155,56 +130,50 @@ var OlegShipulinCommand = Command{
 var FemboyRegisterCommand = Command{
 	CreateMessageFullMatchPredicate("femboy_register"),
 	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
-		chatId := u.Message.From.ID
-		_, isPresent := ctx.FemboyPlayers[chatId]
 
-		if len(ctx.FemboyPlayers) == 0 {
-			ctx.FemboyPlayers = make(map[int]FemboyPlayer)
-		}
-
-		if isPresent == true {
-			return tgbotapi.NewMessage(u.Message.Chat.ID, "Ты уже играешь в фембоев!")
-		} else {
-
-			ctx.FemboyPlayers[chatId] = FemboyPlayer{u.Message.From.UserName, 0}
+		if ctx.FemboyGame.RegisterPlayer(u.Message.From.UserName) {
 			return tgbotapi.NewMessage(u.Message.Chat.ID, "Теперь ты играешь в фембоев!")
+		} else {
+			return tgbotapi.NewMessage(u.Message.Chat.ID, "Ты уже играешь в фембоев!")
 		}
 	},
 }
+
 var ChooseTodaysFemboyCommand = Command{
-	CreateMessageFullMatchPredicate("choose_todays_femboy"),
+	CreateMessageFullMatchPredicate("femboy"),
 	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
-		if len(ctx.FemboyPlayers) == 0 {
-			return tgbotapi.NewMessage(u.Message.Chat.ID, "Пока еще никто не играет")
+		winnerUsername, err := ctx.FemboyGame.PickWinner()
+
+		if rlerr, ok := err.(*femboy.RateLimitError); ok {
+			return tgbotapi.NewMessage(
+				u.Message.Chat.ID,
+				fmt.Sprintf("Вы слишком часто вызываете фембоя~\nДайте ботику отдохнуть ещё %d секунд -w-", (rlerr.TimeLeftMs)/1000),
+			)
 		}
 
-		ids := ctx.GetIds()
+		if _, ok := err.(*femboy.NoPlayersError); ok {
+			return tgbotapi.NewMessage(
+				u.Message.Chat.ID,
+				"Ещё никто не играет в фембоя! Присоединись к игре с помощью команды /femboy_register",
+			)
+		}
 
-		rand.Seed(time.Now().UTC().UnixNano())
-		winnerId := ids[rand.Intn(len(ids))]
-		winner := ctx.FemboyPlayers[winnerId]
-
-		tmp := ctx.FemboyPlayers[winnerId]
-		tmp.Wins++
-		ctx.FemboyPlayers[winnerId] = tmp
-
-		return tgbotapi.NewMessage(u.Message.Chat.ID, "Победитель: @"+winner.Username)
+		return tgbotapi.NewMessage(u.Message.Chat.ID, fmt.Sprintf("@%s Ты теперь фембойчик!", winnerUsername))
 	},
 }
+
 var ShowLeaderboardCommand = Command{
-	CreateMessageFullMatchPredicate("show_leaderboard"),
+	CreateMessageFullMatchPredicate("femboy_leaderboard"),
 	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
-		players := ctx.GetPlayers()
+		players := ctx.FemboyGame.GetSortedPlayerSlice()
+
 		if len(players) == 0 {
-			return tgbotapi.NewMessage(u.Message.Chat.ID, "Список победителей пуст")
+			return tgbotapi.NewMessage(u.Message.Chat.ID, "Список фембоев пуст 😿")
 		}
-		sort.Slice(players, func(i, j int) bool {
-			return players[i].Wins > players[j].Wins
-		})
 
 		msg := "Список фембой лидеров: \n"
-		for i := 0; i < len(players); i++ {
-			msg += strconv.Itoa(i+1) + ". " + players[i].Username + " - " + strconv.Itoa(players[i].Wins) + " раз\n"
+		for i, p := range players {
+			msg += fmt.Sprintf("%d. %s - %d раз\n", i+1, p.Username, p.Wins)
 		}
 
 		return tgbotapi.NewMessage(u.Message.Chat.ID, msg)
