@@ -4,9 +4,8 @@ import (
 	"furrybot/commands"
 	"furrybot/config"
 	"furrybot/images"
-	"log"
-
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
+	"log"
 )
 
 var commandsList = []commands.Command{
@@ -15,6 +14,9 @@ var commandsList = []commands.Command{
 	commands.ShowRepositorySelectionCommand,
 	commands.SelectRepositoryCommand,
 	commands.OlegShipulinCommand,
+	commands.FemboyRegisterCommand,
+	commands.ChooseTodaysFemboyCommand,
+	commands.ShowLeaderboardCommand,
 }
 
 func createChatContext(repository images.IImageRepository) commands.ChatContext {
@@ -25,11 +27,9 @@ func createChatContext(repository images.IImageRepository) commands.ChatContext 
 
 func main() {
 	err := config.ReadSettingsFromJson(config.GetSettingsPath())
-
 	if err != nil {
 		log.Fatalln("Failed to load configuration:", err)
 	}
-
 	log.Println("Settings loaded")
 
 	// defaultRepository, err := images.NewLocalFilesImageRepository(settings.PicsFolder)
