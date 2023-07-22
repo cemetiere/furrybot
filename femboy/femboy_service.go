@@ -81,7 +81,7 @@ func (fs *FemboyGameService) PickWinner() (string, error) {
 
 func (fs *FemboyGameService) GetSortedPlayerSlice() []*FemboyGamePlayer {
 	sort.Slice(fs.players, func(i, j int) bool {
-		return fs.players[i].Wins < fs.players[j].Wins
+		return fs.players[i].Wins > fs.players[j].Wins
 	})
 
 	return fs.players

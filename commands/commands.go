@@ -139,6 +139,7 @@ var FemboyRegisterCommand = Command{
 	},
 }
 
+// TODO: Users who aren't registered shouldn't be able to execute this command
 var ChooseTodaysFemboyCommand = Command{
 	CreateMessageFullMatchPredicate("femboy"),
 	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
