@@ -66,18 +66,18 @@ func main() {
 
 	log.Println("Waiting for messages...")
 	for update := range updatesChannel {
-		go handleUpdate(&update, bot, &ctx)
+		go handleUpdate(update, bot, &ctx)
 	}
 }
 
-func handleUpdate(update *tgbotapi.Update, bot *tgbotapi.BotAPI, ctx *commands.ChatContext) {
+func handleUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI, ctx *commands.ChatContext) {
 	if update.Message != nil {
 		log.Printf("[%s] %s | %s", update.Message.From.UserName, update.Message.Text, update.Message.Command())
 	}
 
 	for _, command := range commandsList {
-		if command.Predicate(update, ctx) {
-			reply := command.Executor(update, ctx, bot)
+		if command.Predicate(&update, ctx) {
+			reply := command.Executor(&update, ctx, bot)
 			if reply != nil {
 				_, err := bot.Send(reply)
 				if err != nil {

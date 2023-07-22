@@ -24,36 +24,20 @@ func scrapeForImageLink(r io.Reader) string {
 
 		if tt == html.ErrorToken {
 			return ""
-		} else if tt == html.StartTagToken {
-			tagName, hasAttr := tokenizer.TagName()
-
-			if tagName[0] != 'a' || !hasAttr {
-				continue
-			}
-
+		} else if tt == html.StartTagToken || tt == html.SelfClosingTagToken {
 			// Parse attributes to see if this is
 			// the link we're looking for
 			// Extracts the link if true
-			isLinkToImage := false
-			linkToImage := ""
 			for {
 				key, val, moreAttr := tokenizer.TagAttr()
 
-				if string(key) == "class" && string(val) == "prettyPhotoLink" {
-					isLinkToImage = true
-				}
-
-				if string(key) == "href" {
-					linkToImage = string(val)
+				if (string(key) == "href" || string(key) == "src") && strings.Contains(string(val), "pics/post") {
+					return string(val)
 				}
 
 				if !moreAttr {
 					break
 				}
-			}
-
-			if isLinkToImage && len(linkToImage) > 0 {
-				return linkToImage
 			}
 		}
 	}
@@ -100,7 +84,7 @@ func FetchFromReactor() (string, error) {
 	link := scrapeForImageLink(resp.Body)
 
 	if link == "" {
-		return "", errors.New("couldn't find image link in HTML")
+		return "", fmt.Errorf("couldn't find image link in HTML (%s)", resp.Request.URL)
 	}
 
 	link = "http:" + link
