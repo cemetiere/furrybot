@@ -159,7 +159,7 @@ var ChooseTodaysFemboyCommand = Command{
 			)
 		}
 
-		return tgbotapi.NewMessage(u.Message.Chat.ID, fmt.Sprintf("@%s Ты теперь фембойчик!", winnerUsername))
+		return tgbotapi.NewMessage(u.Message.Chat.ID, fmt.Sprintf("@%s Ты был выбран фембоем!", winnerUsername))
 	},
 }
 
