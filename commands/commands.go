@@ -78,6 +78,9 @@ var ShowRepositorySelectionCommand = Command{
 			tgbotapi.NewInlineKeyboardRow(
 				tgbotapi.NewInlineKeyboardButtonData("Reactor ⚛", SELECT_REPOSITORY_PREFIX+"reactor"),
 			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("FAP Reactor 🍆", SELECT_REPOSITORY_PREFIX+"fap_reactor"),
+			),
 		)
 
 		return msg
@@ -105,6 +108,9 @@ var SelectRepositoryCommand = Command{
 		case "reactor":
 			ctx.ImageRepository = &images.ReactorImageRepository{}
 			repository_name = "Reactor"
+		case "fap_reactor":
+			ctx.ImageRepository = &images.FapReactorImageRepository{}
+			repository_name = "Fap Reactor"
 		default:
 			bot.AnswerCallbackQuery(tgbotapi.NewCallback(u.CallbackQuery.ID, "Что-то пошло не так"))
 			return nil

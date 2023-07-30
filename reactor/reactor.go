@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/html"
 )
 
-const REACTOR_LINK = "https://furry.reactor.cc/random"
+const REACTOR_LINK = "https://furry.reactor.cc"
+const FAP_REACTOR_LINK = "http://fapreactor.com"
 
 func scrapeForImageLink(r io.Reader) string {
 	tokenizer := html.NewTokenizer(r)
@@ -31,8 +33,12 @@ func scrapeForImageLink(r io.Reader) string {
 			for {
 				key, val, moreAttr := tokenizer.TagAttr()
 
-				if (string(key) == "href" || string(key) == "src") && strings.Contains(string(val), "pics/post") {
-					return string(val)
+				if (string(key) == "href" || string(key) == "src") && strings.Contains(string(val), "pics/post") && !strings.Contains(string(val), "/full/") {
+					if strings.HasPrefix(string(val), "http:") {
+						return string(val)
+					} else {
+						return "http:" + string(val)
+					}
 				}
 
 				if !moreAttr {
@@ -68,9 +74,8 @@ func fetchImage(folder, imageLink string) string {
 	return filename
 }
 
-// Получает рандомную картинку в реакторе и сохраняет её в папке
-func FetchFromReactor() (string, error) {
-	resp, err := http.Get(REACTOR_LINK)
+func FetchImageFromReactorPost(postLink string) (string, error) {
+	resp, err := http.Get(postLink)
 
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch from reactor. error: %s", err)
@@ -87,8 +92,6 @@ func FetchFromReactor() (string, error) {
 		return "", fmt.Errorf("couldn't find image link in HTML (%s)", resp.Request.URL)
 	}
 
-	link = "http:" + link
-
 	filename := fetchImage(config.Settings.ReactorFolderName, link)
 
 	if filename == "" {
@@ -96,4 +99,45 @@ func FetchFromReactor() (string, error) {
 	}
 
 	return filename, nil
+}
+
+// Получает рандомную картинку в реакторе и сохраняет её в папке
+func FetchFromReactorRandom(baseLink string) (string, error) {
+	return FetchImageFromReactorPost(baseLink + "/random")
+}
+
+func ScrapeReactorTagPage(baseUrl, term string, pageNo int) ([]string, error) {
+	resp, err := http.Get(baseUrl + "/tag/" + term + "/" + strconv.Itoa(pageNo))
+
+	if err != nil {
+		return []string{}, fmt.Errorf("failed to scrape reactor search page. error: %s", err)
+	}
+	defer resp.Body.Close()
+
+	tokenizer := html.NewTokenizer(resp.Body)
+	linksFound := make([]string, 0)
+
+	for {
+		tt := tokenizer.Next()
+
+		if tt == html.ErrorToken {
+			return linksFound, nil
+		} else if tt == html.StartTagToken {
+			// Parse attributes to see if this is
+			// the link we're looking for
+			// Extracts the link if true
+			for {
+				key, val, moreAttr := tokenizer.TagAttr()
+
+				if string(key) == "href" && strings.HasPrefix(string(val), "/post/") {
+					linksFound = append(linksFound, baseUrl+string(val))
+					break
+				}
+
+				if !moreAttr {
+					break
+				}
+			}
+		}
+	}
 }
