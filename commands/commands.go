@@ -6,6 +6,7 @@ import (
 	"furrybot/femboy"
 	"furrybot/images"
 	"log"
+	"math/rand"
 	"strings"
 
 	"github.com/NicoNex/echotron/v3"
@@ -207,7 +208,11 @@ var ChooseTodaysFemboyCommand = Command{
 			return err
 		}
 
-		_, err = bot.SendMessage(fmt.Sprintf("@%s Ты был выбран фембоем!", memberResp.Result.User.Username), update.ChatID(), nil)
+		balanceGift := rand.Int63n(config.Settings.MaxfemboyBonus - config.Settings.MinFemboyBonus + 1)
+		balanceGift += config.Settings.MinFemboyBonus
+		bot.Balance.IncreaseBalance(winnerId, balanceGift)
+
+		_, err = bot.SendMessage(fmt.Sprintf("@%s Ты был выбран фембоем!\nОн(а) получил(а) %d cum(s)", memberResp.Result.User.Username, balanceGift), update.ChatID(), nil)
 		return err
 	},
 }
@@ -238,6 +243,19 @@ var ShowLeaderboardCommand = Command{
 		}
 
 		_, err := bot.SendMessage(msg, update.ChatID(), nil)
+
+		return err
+	},
+}
+
+var ShowBalanceCommand = Command{
+	CreateMessageFullMatchPredicate("/balance"),
+	func(bot *Bot, update *echotron.Update) error {
+		balance := bot.Balance.GetBalance(update.Message.From.ID)
+
+		_, err := bot.SendMessage(fmt.Sprintf("На твоём счету %d cum(s)", balance), update.ChatID(), &echotron.MessageOptions{
+			ReplyToMessageID: update.Message.ID,
+		})
 
 		return err
 	},

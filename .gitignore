@@ -6,3 +6,4 @@ settings.json
 settings.dev.json
 *.jpeg
 *.png
+.vscode

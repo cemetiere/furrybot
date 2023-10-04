@@ -10,6 +10,8 @@ type SettingsModel struct {
 	PicsFolder        string `json:"picsFolder"`
 	ReactorFolderName string `json:"reactorFolderName"`
 	FemboyCooldownMs  int64  `json:"femboyCooldownMs"`
+	MinFemboyBonus    int64  `json:"minFemboyBonus"`
+	MaxfemboyBonus    int64  `json:"maxFemboyBonus"`
 }
 
 const CONFIG_ENV = "FURRYBOT_CONFIG_FILE"

@@ -18,6 +18,7 @@ var commandsList = []Command{
 	FemboyRegisterCommand,
 	ChooseTodaysFemboyCommand,
 	ShowLeaderboardCommand,
+	ShowBalanceCommand,
 }
 
 type Bot struct {

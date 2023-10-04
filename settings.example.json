@@ -2,5 +2,7 @@
     "telegramBotToken": "hackme",
     "picsFolder": "pics",
     "reactorFolderName": "pics/reactor",
-    "femboyCooldownMs": 30000
+    "femboyCooldownMs": 30000,
+    "minFemboyBonus": 10,
+    "maxFemboyBonus": 20
 }
