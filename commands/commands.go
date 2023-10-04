@@ -133,6 +133,15 @@ var OlegShipulinCommand = Command{
 	},
 }
 
+var Fuck = Command{
+	CreateMessageFullMatchPredicate("fuck"),
+	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
+		victim := u.Message.CommandArguments()
+		fmt.Println(victim)
+		return tgbotapi.NewMessage(u.Message.Chat.ID, "Ты трахнул "+victim)
+	},
+}
+
 var FemboyRegisterCommand = Command{
 	CreateMessageFullMatchPredicate("femboy_register"),
 	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {

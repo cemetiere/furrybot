@@ -19,7 +19,11 @@ var commandsList = []commands.Command{
 	commands.FemboyRegisterCommand,
 	commands.ChooseTodaysFemboyCommand,
 	commands.ShowLeaderboardCommand,
+	commands.Fuck,
 }
+
+// map chatid -> context
+var chats = make(map[int64]commands.ChatContext)
 
 func createChatContext(repository images.IImageRepository) commands.ChatContext {
 	return commands.ChatContext{
@@ -48,7 +52,7 @@ func main() {
 	// TODO: Each chat should have its own context for
 	// users to configure, for example, which repository
 	// to use
-	ctx := createChatContext(defaultRepository)
+	//ctx := createChatContext(defaultRepository)
 
 	bot, err := tgbotapi.NewBotAPI(config.Settings.TelegramBotToken)
 
@@ -69,6 +73,13 @@ func main() {
 
 	log.Println("Waiting for messages...")
 	for update := range updatesChannel {
+		ctx, ok := chats[update.Message.Chat.ID]
+		if !ok {
+			chats[update.Message.Chat.ID] = createChatContext(defaultRepository)
+			ctx = chats[update.Message.Chat.ID]
+		}
+		// if chatid in map -> ctx i peredaem
+		// else createCtx to map
 		go handleUpdate(update, bot, &ctx)
 	}
 }
