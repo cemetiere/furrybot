@@ -7,6 +7,7 @@ import (
 	"furrybot/images"
 	"log"
 	"math/rand"
+	"strconv"
 	"strings"
 
 	"github.com/NicoNex/echotron/v3"
@@ -22,9 +23,27 @@ type Command struct {
 	Executor  CommandExecutor
 }
 
+func GetCommandFromUpdate(update *echotron.Update) (string, string) {
+	for _, entity := range update.Message.Entities {
+		if entity.Type == "bot_command" {
+			command := update.Message.Text[entity.Offset : entity.Offset+entity.Length]
+			if index := strings.Index(command, "@"); index >= 0 {
+				command = command[:index]
+			}
+			return command, strings.Trim(update.Message.Text[entity.Offset+entity.Length:], " ")
+		}
+	}
+
+	return "", ""
+}
+
 func CreateMessageFullMatchPredicate(commandName string) CommandExecutionPredicate {
 	return func(bot *Bot, u *echotron.Update) bool {
-		return u.Message != nil && u.Message.Text == commandName
+		if u.Message == nil {
+			return false
+		}
+		command, _ := GetCommandFromUpdate(u)
+		return command == commandName
 	}
 }
 
@@ -239,7 +258,7 @@ var ShowLeaderboardCommand = Command{
 				bot.FemboyGame.RemovePlayerByUserId(p.UserId)
 			}
 
-			msg += fmt.Sprintf("%d. %s - %d раз\n", i+1, memberResp.Result.User.Username, p.Wins)
+			msg += fmt.Sprintf("%d. %s - %d раз\n", i+1-removed, memberResp.Result.User.Username, p.Wins)
 		}
 
 		_, err := bot.SendMessage(msg, update.ChatID(), nil)
@@ -267,14 +286,17 @@ var FuckCommand = Command{
 			return false
 		}
 
-		if !strings.HasPrefix(update.Message.Text, "/fuck @") {
+		command, params := GetCommandFromUpdate(update)
+
+		if command != "/fuck" {
 			return false
 		}
-		params := strings.TrimPrefix(update.Message.Text, "/fuck @")
-		return !strings.Contains(params, " ")
+
+		return !strings.Contains(params, " ") && strings.HasPrefix(params, "@")
 	},
 	func(bot *Bot, update *echotron.Update) error {
-		target := strings.TrimPrefix(update.Message.Text, "/fuck @")
+		_, params := GetCommandFromUpdate(update)
+		target := params[1:]
 
 		if target == bot.BotName {
 			penalty := rand.Int63n(bot.Balance.GetBalance(update.Message.From.ID) + 1)
@@ -317,6 +339,125 @@ var FuckCommand = Command{
 
 		_, err := bot.SendMessage(msg, update.ChatID(), nil)
 
+		return err
+	},
+}
+
+var GiveCumCommand = Command{
+	func(bot *Bot, update *echotron.Update) bool {
+		command, params := GetCommandFromUpdate(update)
+		if command != "/give" {
+			return false
+		}
+
+		params = strings.Trim(params, " ")
+		params_parts := strings.Split(params, " ")
+
+		if len(params_parts) != 2 {
+			return false
+		}
+
+		if _, err := strconv.Atoi(params_parts[1]); !strings.HasPrefix(params_parts[0], "@") || err != nil {
+			return false
+		}
+
+		return true
+	},
+	func(bot *Bot, update *echotron.Update) error {
+		_, params := GetCommandFromUpdate(update)
+		params = strings.Trim(params, " ")
+		params_parts := strings.Split(params, " ")
+		target := params_parts[0][1:]
+		amount, _ := strconv.Atoi(params_parts[1])
+
+		userId, ok := bot.Username2UserId[target]
+
+		if !ok {
+			_, err := bot.SendMessage("Переводить cum(s) только тем, кто что-то писал в чате!", update.ChatID(), nil)
+			return err
+		}
+
+		if !bot.Balance.DecreaseBalance(update.Message.From.ID, int64(amount)) {
+			_, err := bot.SendMessage("У тебя недостаточно средств на счету!", update.ChatID(), nil)
+			return err
+		}
+
+		bot.Balance.IncreaseBalance(userId, int64(amount))
+
+		_, err := bot.SendMessage(
+			fmt.Sprintf("@%s перевёл @%s %d cum(s)", update.Message.From.Username, target, amount),
+			update.ChatID(),
+			nil,
+		)
+
+		return err
+	},
+}
+
+var SpawnCumCommand = Command{
+	func(bot *Bot, update *echotron.Update) bool {
+		res, err := bot.GetChatAdministrators(update.ChatID())
+
+		if err != nil {
+			return false
+		}
+
+		senderIsAdmin := false
+		for _, member := range res.Result {
+			if member.User.Username == update.Message.From.Username {
+				senderIsAdmin = true
+				break
+			}
+		}
+		if !senderIsAdmin {
+			return false
+		}
+
+		command, params := GetCommandFromUpdate(update)
+
+		if command != "/spawn" {
+			return false
+		}
+
+		params = strings.Trim(params, " ")
+		_, err = strconv.Atoi(params)
+		return err == nil
+	},
+	func(bot *Bot, update *echotron.Update) error {
+		_, params := GetCommandFromUpdate(update)
+		params = strings.Trim(params, " ")
+		amount, _ := strconv.Atoi(params)
+
+		bot.Balance.IncreaseBalance(update.Message.From.ID, int64(amount))
+
+		_, err := bot.SendMessage(
+			fmt.Sprintf("@%s начислено на твой счёт %d cum(s)", update.Message.From.Username, amount),
+			update.ChatID(),
+			nil,
+		)
+
+		return err
+	},
+}
+
+var BalanceLeaderboardCommand = Command{
+	CreateMessageFullMatchPredicate("/balance_leaderboard"),
+	func(bot *Bot, update *echotron.Update) error {
+		balanceSlice := bot.Balance.GetSortedBalanceSlice()
+
+		removed := 0
+		msg := "Список cum лидеров: \n"
+		for i, userBalance := range balanceSlice {
+			memberResp, err := bot.GetChatMember(update.ChatID(), userBalance.UserId)
+			if err != nil {
+				log.Printf("Failed to get username from id: %d\n", memberResp.ErrorCode)
+				removed++
+			}
+
+			msg += fmt.Sprintf("%d. %s - %d cum(s)\n", i+1-removed, memberResp.Result.User.Username, userBalance.Balance)
+		}
+
+		_, err := bot.SendMessage(msg, update.ChatID(), nil)
 		return err
 	},
 }

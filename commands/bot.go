@@ -20,6 +20,9 @@ var commandsList = []Command{
 	ShowLeaderboardCommand,
 	ShowBalanceCommand,
 	FuckCommand,
+	GiveCumCommand,
+	SpawnCumCommand,
+	BalanceLeaderboardCommand,
 }
 
 type Bot struct {
@@ -54,7 +57,8 @@ func (bot *Bot) Update(update *echotron.Update) {
 	}
 
 	if update.Message != nil {
-		log.Printf("[%s] %s", update.Message.From.Username, update.Message.Text)
+		command, _ := GetCommandFromUpdate(update)
+		log.Printf("[%s] %s | %s", update.Message.From.Username, update.Message.Text, command)
 		bot.Username2UserId[update.Message.From.Username] = update.Message.From.ID
 	}
 

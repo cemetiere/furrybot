@@ -1,7 +1,14 @@
 package balance
 
+import "sort"
+
 type BalanceService struct {
 	userBalance map[int64]int64
+}
+
+type UserBalance struct {
+	UserId  int64
+	Balance int64
 }
 
 func CreateNewBalanceService() *BalanceService {
@@ -40,4 +47,22 @@ func (balance *BalanceService) DecreaseBalance(userId, amount int64) bool {
 	balance.userBalance[userId] = val - amount
 
 	return true
+}
+func (balance *BalanceService) GetSortedBalanceSlice() []UserBalance {
+	balanceSlice := make([]UserBalance, len(balance.userBalance))
+	i := 0
+
+	for user, balance := range balance.userBalance {
+		balanceSlice[i] = UserBalance{
+			UserId:  user,
+			Balance: balance,
+		}
+		i++
+	}
+
+	sort.Slice(balanceSlice, func(i, j int) bool {
+		return balanceSlice[i].Balance > balanceSlice[j].Balance
+	})
+
+	return balanceSlice
 }
