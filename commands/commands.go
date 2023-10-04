@@ -276,6 +276,18 @@ var FuckCommand = Command{
 	func(bot *Bot, update *echotron.Update) error {
 		target := strings.TrimPrefix(update.Message.Text, "/fuck @")
 
+		if target == bot.BotName {
+			penalty := rand.Int63n(bot.Balance.GetBalance(update.Message.From.ID) + 1)
+			bot.Balance.DecreaseBalance(update.Message.From.ID, penalty)
+
+			msg := fmt.Sprintf(
+				">ш< бота трахать нельзя! За это ты будешь наказан!\n @%s получил штраф в сумме %d cum(s)",
+				update.Message.From.Username, penalty,
+			)
+			_, err := bot.SendMessage(msg, update.ChatID(), nil)
+			return err
+		}
+
 		userId, ok := bot.Username2UserId[target]
 
 		if !ok {

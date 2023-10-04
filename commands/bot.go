@@ -25,6 +25,7 @@ var commandsList = []Command{
 type Bot struct {
 	echotron.API
 	ChatId          int64
+	BotName         string
 	ImageRepository images.IImageRepository
 	FemboyGame      *femboy.FemboyGameService
 	Balance         *balance.BalanceService
@@ -45,6 +46,13 @@ func CreateBotFactory(token string) echotron.NewBotFn {
 }
 
 func (bot *Bot) Update(update *echotron.Update) {
+	if bot.BotName == "" {
+		res, _ := bot.GetMe()
+		if res.Result != nil {
+			bot.BotName = res.Result.Username
+		}
+	}
+
 	if update.Message != nil {
 		log.Printf("[%s] %s", update.Message.From.Username, update.Message.Text)
 		bot.Username2UserId[update.Message.From.Username] = update.Message.From.ID
