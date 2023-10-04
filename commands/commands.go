@@ -212,7 +212,7 @@ var ChooseTodaysFemboyCommand = Command{
 		balanceGift += config.Settings.MinFemboyBonus
 		bot.Balance.IncreaseBalance(winnerId, balanceGift)
 
-		_, err = bot.SendMessage(fmt.Sprintf("@%s Ты был выбран фембоем!\nОн(а) получил(а) %d cum(s)", memberResp.Result.User.Username, balanceGift), update.ChatID(), nil)
+		_, err = bot.SendMessage(fmt.Sprintf("@%s Ты был выбран фембоем!\nТы получил(а) %d cum(s)", memberResp.Result.User.Username, balanceGift), update.ChatID(), nil)
 		return err
 	},
 }
@@ -232,7 +232,7 @@ var ShowLeaderboardCommand = Command{
 		for i, p := range players {
 			memberResp, err := bot.GetChatMember(update.ChatID(), p.UserId)
 			if err != nil {
-				log.Printf("Failed to get username from id: %s\n", memberResp.ErrorCode)
+				log.Printf("Failed to get username from id: %d\n", memberResp.ErrorCode)
 			}
 			if memberResp.Result == nil {
 				removed++
@@ -256,6 +256,54 @@ var ShowBalanceCommand = Command{
 		_, err := bot.SendMessage(fmt.Sprintf("На твоём счету %d cum(s)", balance), update.ChatID(), &echotron.MessageOptions{
 			ReplyToMessageID: update.Message.ID,
 		})
+
+		return err
+	},
+}
+
+var FuckCommand = Command{
+	func(bot *Bot, update *echotron.Update) bool {
+		if update.Message == nil {
+			return false
+		}
+
+		if !strings.HasPrefix(update.Message.Text, "/fuck @") {
+			return false
+		}
+		params := strings.TrimPrefix(update.Message.Text, "/fuck @")
+		return !strings.Contains(params, " ")
+	},
+	func(bot *Bot, update *echotron.Update) error {
+		target := strings.TrimPrefix(update.Message.Text, "/fuck @")
+
+		userId, ok := bot.Username2UserId[target]
+
+		if !ok {
+			_, err := bot.SendMessage("Трахать можно только тех, кто что-то писал в чате!", update.ChatID(), nil)
+			return err
+		}
+
+		if !bot.Balance.DecreaseBalance(update.Message.From.ID, config.Settings.TrahCost) {
+			_, err := bot.SendMessage(
+				fmt.Sprintf("У тебя недостаточно cum(s) чтобы трахнуть! Необходимо %d cum(s)", config.Settings.TrahCost),
+				update.ChatID(),
+				nil,
+			)
+			return err
+		}
+
+		trahBonus := rand.Int63n(config.Settings.TrahCost + 1)
+		bot.Balance.IncreaseBalance(userId, trahBonus)
+
+		var msg string
+
+		if update.Message.From.ID == userId {
+			msg = fmt.Sprintf("Самотрах!\n @%s трахнул себя и получил %d cum(s)", target, trahBonus)
+		} else {
+			msg = fmt.Sprintf("@%s трахнул @%s!\n@%s получил %d cum(s)", update.Message.From.Username, target, target, trahBonus)
+		}
+
+		_, err := bot.SendMessage(msg, update.ChatID(), nil)
 
 		return err
 	},

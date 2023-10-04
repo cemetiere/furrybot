@@ -4,5 +4,6 @@
     "reactorFolderName": "pics/reactor",
     "femboyCooldownMs": 30000,
     "minFemboyBonus": 10,
-    "maxFemboyBonus": 20
+    "maxFemboyBonus": 20,
+    "trahCost": 10
 }

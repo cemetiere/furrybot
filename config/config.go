@@ -12,6 +12,7 @@ type SettingsModel struct {
 	FemboyCooldownMs  int64  `json:"femboyCooldownMs"`
 	MinFemboyBonus    int64  `json:"minFemboyBonus"`
 	MaxfemboyBonus    int64  `json:"maxFemboyBonus"`
+	TrahCost          int64  `json:"trahCost"`
 }
 
 const CONFIG_ENV = "FURRYBOT_CONFIG_FILE"
