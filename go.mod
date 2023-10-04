@@ -3,7 +3,8 @@ module furrybot
 go 1.19
 
 require (
-	golang.org/x/net v0.12.0
+	github.com/NicoNex/echotron/v3 v3.27.0
+	golang.org/x/net v0.15.0
 	gopkg.in/telegram-bot-api.v4 v4.6.4
 )
 

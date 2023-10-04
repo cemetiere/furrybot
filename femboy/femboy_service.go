@@ -28,30 +28,30 @@ type FemboyGameService struct {
 }
 
 type FemboyGamePlayer struct {
-	Username string
-	Wins     int
+	UserId int64
+	Wins   int
 }
 
 func NewFemboyGameService() *FemboyGameService {
 	return &FemboyGameService{make([]*FemboyGamePlayer, 0), 0}
 }
 
-func (fs *FemboyGameService) RegisterPlayer(username string) bool {
+func (fs *FemboyGameService) RegisterPlayer(userId int64) bool {
 	for _, p := range fs.players {
-		if p.Username == username {
+		if p.UserId == userId {
 			return false
 		}
 	}
 
-	fs.players = append(fs.players, &FemboyGamePlayer{username, 0})
+	fs.players = append(fs.players, &FemboyGamePlayer{userId, 0})
 	return true
 }
 
-func (fs *FemboyGameService) RemovePlayerByUsername(username string) {
+func (fs *FemboyGameService) RemovePlayerByUserId(userId int64) {
 	players := make([]*FemboyGamePlayer, 0, len(fs.players)-1)
 
 	for i := 0; i < len(fs.players); i++ {
-		if fs.players[i].Username == username {
+		if fs.players[i].UserId == userId {
 			continue
 		}
 
@@ -61,22 +61,22 @@ func (fs *FemboyGameService) RemovePlayerByUsername(username string) {
 	fs.players = players
 }
 
-func (fs *FemboyGameService) PickWinner() (string, error) {
+func (fs *FemboyGameService) PickWinner() (int64, error) {
 	if len(fs.players) == 0 {
-		return "", &NoPlayersError{}
+		return 0, &NoPlayersError{}
 	}
 
 	timeElapsed := time.Now().UTC().UnixMilli() - fs.lastFemboyMs
 
 	if timeElapsed < config.Settings.FemboyCooldownMs {
-		return "", &RateLimitError{config.Settings.FemboyCooldownMs - timeElapsed}
+		return 0, &RateLimitError{config.Settings.FemboyCooldownMs - timeElapsed}
 	}
 
 	winner := fs.players[rand.Intn(len(fs.players))]
 	winner.Wins++
 	fs.lastFemboyMs = time.Now().UTC().UnixMilli()
 
-	return winner.Username, nil
+	return winner.UserId, nil
 }
 
 func (fs *FemboyGameService) GetSortedPlayerSlice() []*FemboyGamePlayer {

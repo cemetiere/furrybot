@@ -8,190 +8,238 @@ import (
 	"log"
 	"strings"
 
+	"github.com/NicoNex/echotron/v3"
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
 
-type CommandExecutor func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable
+type CommandExecutor func(bot *Bot, update *echotron.Update) error
 
 // Checks whether to execute a command or not
-type CommandExecutionPredicate func(u *tgbotapi.Update, ctx *ChatContext) bool
+type CommandExecutionPredicate func(bot *Bot, update *echotron.Update) bool
 
 type Command struct {
 	Predicate CommandExecutionPredicate
 	Executor  CommandExecutor
 }
 
-type ChatContext struct {
-	ImageRepository images.IImageRepository
-	FemboyGame      *femboy.FemboyGameService
-}
-
 func CreateMessageFullMatchPredicate(commandName string) CommandExecutionPredicate {
-	return func(u *tgbotapi.Update, ctx *ChatContext) bool {
-		return u.Message != nil && u.Message.Command() == commandName
+	return func(bot *Bot, u *echotron.Update) bool {
+		return u.Message != nil && u.Message.Text == commandName
 	}
 }
 
 var GetFurryPicCommand = Command{
-	CreateMessageFullMatchPredicate("get_furry"),
-	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
-		image, err := ctx.ImageRepository.GetRandomImagePath()
+	CreateMessageFullMatchPredicate("/get_furry"),
+	func(bot *Bot, update *echotron.Update) error {
+		image, err := bot.ImageRepository.GetRandomImagePath()
 
 		if err != nil {
-			log.Printf("Failed to fetch image from repository. Error: %s", err)
-			return tgbotapi.NewMessage(u.Message.Chat.ID, "Не удалось получить картинку, попробуйте ещё раз позже")
+			tgbotapi.NewMessage(update.Message.Chat.ID, "Не удалось получить картинку, попробуйте ещё раз позже")
+			return fmt.Errorf("Failed to fetch image from repository. Error: %s", err)
 		}
 
-		msg := tgbotapi.NewPhotoUpload(u.Message.Chat.ID, image)
-		return msg
+		_, err = bot.SendPhoto(echotron.NewInputFilePath(image), update.ChatID(), &echotron.PhotoOptions{
+			HasSpoiler: true,
+		})
+		return err
 	},
 }
 
 var GetFurryListCommand = Command{
-	CreateMessageFullMatchPredicate("get_furry_list"),
-	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
+	CreateMessageFullMatchPredicate("/get_furry_list"),
+	func(bot *Bot, update *echotron.Update) error {
 		msg := "List of available images: \n"
 
-		if len(ctx.ImageRepository.GetImages()) == 0 {
+		if len(bot.ImageRepository.GetImages()) == 0 {
 			msg += "Empty (This source might not support image listing)"
 		} else {
-			for _, v := range ctx.ImageRepository.GetImages() {
+			for _, v := range bot.ImageRepository.GetImages() {
 				msg += v + "\n"
 			}
-			msg += "Total: " + fmt.Sprint(len(ctx.ImageRepository.GetImages()))
+			msg += "Total: " + fmt.Sprint(len(bot.ImageRepository.GetImages()))
 		}
 
-		return tgbotapi.NewMessage(u.Message.Chat.ID, msg)
+		_, err := bot.SendMessage(msg, update.ChatID(), nil)
+		return err
 	},
 }
 
 const SELECT_REPOSITORY_PREFIX = "select-repository:"
 
 var ShowRepositorySelectionCommand = Command{
-	CreateMessageFullMatchPredicate("show_repositories"),
-	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
-		msg := tgbotapi.NewMessage(u.Message.Chat.ID, "🐈 Выберите источник картинок")
-		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("Коллекция авторов бота 😈", SELECT_REPOSITORY_PREFIX+"local"),
-			),
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("Reactor ⚛", SELECT_REPOSITORY_PREFIX+"reactor"),
-			),
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("FAP Reactor 🍆", SELECT_REPOSITORY_PREFIX+"fap_reactor"),
-			),
-		)
+	CreateMessageFullMatchPredicate("/show_repositories"),
+	func(bot *Bot, update *echotron.Update) error {
+		keys := [][]echotron.InlineKeyboardButton{
+			{
+				{
+					Text:         "Коллекция авторов бота 😈",
+					CallbackData: SELECT_REPOSITORY_PREFIX + "local",
+				},
+			},
+			{
+				{
+					Text:         "Reactor ⚛",
+					CallbackData: SELECT_REPOSITORY_PREFIX + "reactor",
+				},
+			},
+			{
+				{
+					Text:         "FAP Reactor 🍆",
+					CallbackData: SELECT_REPOSITORY_PREFIX + "fap_reactor",
+				},
+			},
+		}
 
-		return msg
+		_, err := bot.SendMessage("🐈 Выберите источник картинок", update.ChatID(), &echotron.MessageOptions{
+			ReplyMarkup: echotron.InlineKeyboardMarkup{InlineKeyboard: keys},
+		})
+
+		return err
 	},
 }
 
 var SelectRepositoryCommand = Command{
-	func(u *tgbotapi.Update, ctx *ChatContext) bool {
-		return u.CallbackQuery != nil && strings.HasPrefix(u.CallbackQuery.Data, "select-repository:")
+	func(bot *Bot, update *echotron.Update) bool {
+		return update.CallbackQuery != nil && strings.HasPrefix(update.CallbackQuery.Data, "select-repository:")
 	},
-	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
+	func(bot *Bot, update *echotron.Update) error {
 		repository_name := ""
 
-		switch u.CallbackQuery.Data[len(SELECT_REPOSITORY_PREFIX):] {
+		switch update.CallbackQuery.Data[len(SELECT_REPOSITORY_PREFIX):] {
 		case "local":
 			repository, err := images.NewLocalFilesImageRepository(config.Settings.PicsFolder)
 
 			if err != nil {
-				bot.AnswerCallbackQuery(tgbotapi.NewCallback(u.CallbackQuery.ID, "Что-то пошло не так"))
+				bot.AnswerCallbackQuery(update.CallbackQuery.ID, &echotron.CallbackQueryOptions{
+					Text: "Что-то пошло не так",
+				})
 				return nil
 			}
 
-			ctx.ImageRepository = repository
+			bot.ImageRepository = repository
 			repository_name = "коллекция авторов бота"
 		case "reactor":
-			ctx.ImageRepository = &images.ReactorImageRepository{}
+			bot.ImageRepository = &images.ReactorImageRepository{}
 			repository_name = "Reactor"
 		case "fap_reactor":
-			ctx.ImageRepository = &images.FapReactorImageRepository{}
+			bot.ImageRepository = &images.FapReactorImageRepository{}
 			repository_name = "Fap Reactor"
 		default:
-			bot.AnswerCallbackQuery(tgbotapi.NewCallback(u.CallbackQuery.ID, "Что-то пошло не так"))
+			bot.AnswerCallbackQuery(update.CallbackQuery.ID, &echotron.CallbackQueryOptions{
+				Text: "Что-то пошло не так",
+			})
 			return nil
 		}
 
-		bot.AnswerCallbackQuery(tgbotapi.NewCallback(u.CallbackQuery.ID, ""))
-		bot.DeleteMessage(tgbotapi.NewDeleteMessage(u.CallbackQuery.Message.Chat.ID, u.CallbackQuery.Message.MessageID))
-		return tgbotapi.NewMessage(u.CallbackQuery.Message.Chat.ID, fmt.Sprintf("Выбран источник \"%s\"", repository_name))
+		bot.AnswerCallbackQuery(update.CallbackQuery.ID, nil)
+		bot.DeleteMessage(update.ChatID(), update.CallbackQuery.Message.ID)
+		_, err := bot.SendMessage(fmt.Sprintf("Выбран источник \"%s\"", repository_name), update.ChatID(), nil)
+		return err
 	},
 }
 
 var OlegShipulinCommand = Command{
-	CreateMessageFullMatchPredicate("oleg_shipulin"),
-	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
-		if u.Message.From.UserName == "real_chilll" {
-			return tgbotapi.NewMessage(u.Message.Chat.ID, "ТЫ ОЛЕГ ШИПУЛИН 🔥🔥🔥🔥🔥")
+	CreateMessageFullMatchPredicate("/oleg_shipulin"),
+	func(bot *Bot, update *echotron.Update) error {
+		if update.Message.From.Username == "real_chilll" {
+			_, err := bot.SendMessage("ТЫ ОЛЕГ ШИПУЛИН 🔥🔥🔥🔥🔥", update.ChatID(), nil)
+			return err
 		} else {
-			return tgbotapi.NewMessage(u.Message.Chat.ID, "ты не олег шипулин 😿")
+			_, err := bot.SendMessage("ты не олег шипулин 😿", update.ChatID(), nil)
+			return err
 		}
 	},
 }
 
-var Fuck = Command{
-	CreateMessageFullMatchPredicate("fuck"),
-	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
-		victim := u.Message.CommandArguments()
-		fmt.Println(victim)
-		return tgbotapi.NewMessage(u.Message.Chat.ID, "Ты трахнул "+victim)
-	},
-}
+// var Fuck = Command{
+// 	CreateMessageFullMatchPredicate("fuck"),
+// 	func(bot *Bot, update *echotron.Update) error {
+// 		victim := u.Message.CommandArguments()
+// 		fmt.Println(victim)
+// 		return tgbotapi.NewMessage(u.Message.Chat.ID, "Ты трахнул "+victim)
+// 	},
+// }
 
 var FemboyRegisterCommand = Command{
-	CreateMessageFullMatchPredicate("femboy_register"),
-	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
+	CreateMessageFullMatchPredicate("/femboy_register"),
+	func(bot *Bot, update *echotron.Update) error {
 
-		if ctx.FemboyGame.RegisterPlayer(u.Message.From.UserName) {
-			return tgbotapi.NewMessage(u.Message.Chat.ID, "Теперь ты играешь в фембоев!")
+		if bot.FemboyGame.RegisterPlayer(update.Message.From.ID) {
+			_, err := bot.SendMessage("Теперь ты играешь в фембоев!", update.ChatID(), nil)
+			return err
 		} else {
-			return tgbotapi.NewMessage(u.Message.Chat.ID, "Ты уже играешь в фембоев!")
+			_, err := bot.SendMessage("Ты уже играешь в фембоев!", update.ChatID(), nil)
+			return err
 		}
 	},
 }
 
 // TODO: Users who aren't registered shouldn't be able to execute this command
 var ChooseTodaysFemboyCommand = Command{
-	CreateMessageFullMatchPredicate("femboy"),
-	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
-		winnerUsername, err := ctx.FemboyGame.PickWinner()
+	CreateMessageFullMatchPredicate("/femboy"),
+	func(bot *Bot, update *echotron.Update) error {
+		winnerId, err := bot.FemboyGame.PickWinner()
 
 		if rlerr, ok := err.(*femboy.RateLimitError); ok {
-			return tgbotapi.NewMessage(
-				u.Message.Chat.ID,
+			_, err := bot.SendMessage(
 				fmt.Sprintf("Вы слишком часто вызываете фембоя~\nДайте ботику отдохнуть ещё %d секунд -w-", (rlerr.TimeLeftMs)/1000),
+				update.ChatID(),
+				nil,
 			)
+			return err
 		}
 
 		if _, ok := err.(*femboy.NoPlayersError); ok {
-			return tgbotapi.NewMessage(
-				u.Message.Chat.ID,
+			_, err := bot.SendMessage(
 				"Ещё никто не играет в фембоя! Присоединись к игре с помощью команды /femboy_register",
+				update.ChatID(),
+				nil,
 			)
+			return err
 		}
 
-		return tgbotapi.NewMessage(u.Message.Chat.ID, fmt.Sprintf("@%s Ты был выбран фембоем!", winnerUsername))
+		memberResp, err := bot.GetChatMember(update.ChatID(), winnerId)
+		if err != nil {
+			return err
+		}
+		if memberResp.Result == nil {
+			_, err := bot.SendMessage("Фембойчик был выбран, но похоже, что он уже вышел из чата, попробуйте ещё раз!", update.ChatID(), nil)
+			bot.FemboyGame.RemovePlayerByUserId(winnerId)
+			return err
+		}
+
+		_, err = bot.SendMessage(fmt.Sprintf("@%s Ты был выбран фембоем!", memberResp.Result.User.Username), update.ChatID(), nil)
+		return err
 	},
 }
 
 var ShowLeaderboardCommand = Command{
-	CreateMessageFullMatchPredicate("femboy_leaderboard"),
-	func(u *tgbotapi.Update, ctx *ChatContext, bot *tgbotapi.BotAPI) tgbotapi.Chattable {
-		players := ctx.FemboyGame.GetSortedPlayerSlice()
+	CreateMessageFullMatchPredicate("/femboy_leaderboard"),
+	func(bot *Bot, update *echotron.Update) error {
+		players := bot.FemboyGame.GetSortedPlayerSlice()
 
 		if len(players) == 0 {
-			return tgbotapi.NewMessage(u.Message.Chat.ID, "Список фембоев пуст 😿")
+			_, err := bot.SendMessage("Список фембоев пуст 😿", update.ChatID(), nil)
+			return err
 		}
 
+		removed := 0
 		msg := "Список фембой лидеров: \n"
 		for i, p := range players {
-			msg += fmt.Sprintf("%d. %s - %d раз\n", i+1, p.Username, p.Wins)
+			memberResp, err := bot.GetChatMember(update.ChatID(), p.UserId)
+			if err != nil {
+				log.Printf("Failed to get username from id: %s\n", memberResp.ErrorCode)
+			}
+			if memberResp.Result == nil {
+				removed++
+				bot.FemboyGame.RemovePlayerByUserId(p.UserId)
+			}
+
+			msg += fmt.Sprintf("%d. %s - %d раз\n", i+1, memberResp.Result.User.Username, p.Wins)
 		}
 
-		return tgbotapi.NewMessage(u.Message.Chat.ID, msg)
+		_, err := bot.SendMessage(msg, update.ChatID(), nil)
+
+		return err
 	},
 }

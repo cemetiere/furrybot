@@ -1,34 +1,25 @@
 package main
 
 import (
+	"furrybot/balance"
 	"furrybot/commands"
 	"furrybot/config"
 	"furrybot/femboy"
 	"furrybot/images"
 	"log"
 
-	tgbotapi "gopkg.in/telegram-bot-api.v4"
+	"github.com/NicoNex/echotron/v3"
 )
 
-var commandsList = []commands.Command{
-	commands.GetFurryListCommand,
-	commands.GetFurryPicCommand,
-	commands.ShowRepositorySelectionCommand,
-	commands.SelectRepositoryCommand,
-	commands.OlegShipulinCommand,
-	commands.FemboyRegisterCommand,
-	commands.ChooseTodaysFemboyCommand,
-	commands.ShowLeaderboardCommand,
-	commands.Fuck,
-}
-
-// map chatid -> context
-var chats = make(map[int64]commands.ChatContext)
-
-func createChatContext(repository images.IImageRepository) commands.ChatContext {
-	return commands.ChatContext{
-		ImageRepository: repository,
-		FemboyGame:      femboy.NewFemboyGameService(),
+func createBotFactory(token string) echotron.NewBotFn {
+	return func(chatId int64) echotron.Bot {
+		return &commands.Bot{
+			API:             echotron.NewAPI(token),
+			ChatId:          chatId,
+			ImageRepository: &images.ReactorImageRepository{},
+			FemboyGame:      femboy.NewFemboyGameService(),
+			Balance:         balance.CreateNewBalanceService(),
+		}
 	}
 }
 
@@ -39,66 +30,8 @@ func main() {
 	}
 	log.Println("Settings loaded")
 
-	// defaultRepository, err := images.NewLocalFilesImageRepository(settings.PicsFolder)
+	botFactory := createBotFactory(config.Settings.TelegramBotToken)
 
-	// if err != nil {
-	// 	log.Fatalln("Failed to create repository:", err)
-	// }
-
-	// log.Printf("Image repository initialized, loaded %v pics\n", len(defaultRepository.GetImages()))
-
-	defaultRepository := &images.ReactorImageRepository{}
-
-	// TODO: Each chat should have its own context for
-	// users to configure, for example, which repository
-	// to use
-	//ctx := createChatContext(defaultRepository)
-
-	bot, err := tgbotapi.NewBotAPI(config.Settings.TelegramBotToken)
-
-	if err != nil {
-		log.Fatalln("Failed to create bot:", err)
-	}
-
-	log.Printf("Bot initialized. Authenticated as %v\n", bot.Self.UserName)
-
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-
-	updatesChannel, err := bot.GetUpdatesChan(u)
-
-	if err != nil {
-		log.Fatalln("Failed to create updates channel:", err)
-	}
-
-	log.Println("Waiting for messages...")
-	for update := range updatesChannel {
-		ctx, ok := chats[update.Message.Chat.ID]
-		if !ok {
-			chats[update.Message.Chat.ID] = createChatContext(defaultRepository)
-			ctx = chats[update.Message.Chat.ID]
-		}
-		// if chatid in map -> ctx i peredaem
-		// else createCtx to map
-		go handleUpdate(update, bot, &ctx)
-	}
-}
-
-func handleUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI, ctx *commands.ChatContext) {
-	if update.Message != nil {
-		log.Printf("[%s] %s | %s", update.Message.From.UserName, update.Message.Text, update.Message.Command())
-	}
-
-	for _, command := range commandsList {
-		if command.Predicate(&update, ctx) {
-			reply := command.Executor(&update, ctx, bot)
-			if reply != nil {
-				_, err := bot.Send(reply)
-				if err != nil {
-					log.Printf("Failed to reply to [%s], error: %s", update.Message.From.UserName, err)
-				}
-				break
-			}
-		}
-	}
+	dsp := echotron.NewDispatcher(config.Settings.TelegramBotToken, botFactory)
+	log.Fatalln(dsp.Poll())
 }
