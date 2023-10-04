@@ -345,6 +345,10 @@ var FuckCommand = Command{
 
 var GiveCumCommand = Command{
 	func(bot *Bot, update *echotron.Update) bool {
+		if update.Message == nil {
+			return false
+		}
+
 		command, params := GetCommandFromUpdate(update)
 		if command != "/give" {
 			return false
@@ -396,6 +400,9 @@ var GiveCumCommand = Command{
 
 var SpawnCumCommand = Command{
 	func(bot *Bot, update *echotron.Update) bool {
+		if update.Message != nil {
+			return false
+		}
 		res, err := bot.GetChatAdministrators(update.ChatID())
 
 		if err != nil {
