@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/NicoNex/echotron/v3"
-	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
 
 type CommandExecutor func(bot *Bot, update *echotron.Update) error
@@ -34,12 +33,12 @@ var GetFurryPicCommand = Command{
 		image, err := bot.ImageRepository.GetRandomImagePath()
 
 		if err != nil {
-			tgbotapi.NewMessage(update.Message.Chat.ID, "Не удалось получить картинку, попробуйте ещё раз позже")
-			return fmt.Errorf("Failed to fetch image from repository. Error: %s", err)
+			bot.SendMessage("Не удалось получить картинку, попробуйте ещё раз позже", update.ChatID(), nil)
+			return err
 		}
 
 		_, err = bot.SendPhoto(echotron.NewInputFilePath(image), update.ChatID(), &echotron.PhotoOptions{
-			HasSpoiler: true,
+			HasSpoiler: bot.ImageRepository.IsCensored(),
 		})
 		return err
 	},

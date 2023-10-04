@@ -38,7 +38,6 @@ func (bot *Bot) Update(update *echotron.Update) {
 			err := command.Executor(bot, update)
 			if err != nil {
 				log.Printf("Failed to reply to [%s], error: %s", update.Message.From.Username, err)
-				bot.SendMessage("Что то пошло не так, попробуйте ещё раз.", update.ChatID(), nil)
 				break
 			}
 		}

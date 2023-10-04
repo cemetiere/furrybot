@@ -13,6 +13,7 @@ import (
 type IImageRepository interface {
 	GetRandomImagePath() (string, error)
 	GetImages() []string
+	IsCensored() bool
 }
 
 type LocalFilesImageRepository struct {
@@ -50,6 +51,10 @@ func (repository *LocalFilesImageRepository) GetImages() []string {
 	return repository.availableImages
 }
 
+func (*LocalFilesImageRepository) IsCensored() bool {
+	return true
+}
+
 type ReactorImageRepository struct{}
 
 func (r *ReactorImageRepository) GetRandomImagePath() (string, error) {
@@ -58,6 +63,10 @@ func (r *ReactorImageRepository) GetRandomImagePath() (string, error) {
 
 func (r *ReactorImageRepository) GetImages() []string {
 	return []string{}
+}
+
+func (*ReactorImageRepository) IsCensored() bool {
+	return false
 }
 
 type FapReactorImageRepository struct{}
@@ -88,4 +97,8 @@ func (r *FapReactorImageRepository) GetRandomImagePath() (string, error) {
 
 func (r *FapReactorImageRepository) GetImages() []string {
 	return []string{}
+}
+
+func (*FapReactorImageRepository) IsCensored() bool {
+	return true
 }
