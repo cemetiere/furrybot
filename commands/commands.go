@@ -400,7 +400,7 @@ var GiveCumCommand = Command{
 
 var SpawnCumCommand = Command{
 	func(bot *Bot, update *echotron.Update) bool {
-		if update.Message != nil {
+		if update.Message == nil {
 			return false
 		}
 		res, err := bot.GetChatAdministrators(update.ChatID())
