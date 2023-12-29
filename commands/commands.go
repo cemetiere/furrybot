@@ -160,7 +160,7 @@ var SelectRepositoryCommand = Command{
 var OlegShipulinCommand = Command{
 	CreateMessageFullMatchPredicate("/oleg_shipulin"),
 	func(bot *Bot, update *echotron.Update) error {
-		if update.Message.From.Username == "olegshipu" {
+		if update.Message.From.Username == "olegshipu" || update.Message.From.Username == "cemetiere" {
 			_, err := bot.SendMessage("ТЫ ОЛЕГ ШИПУЛИН 🔥🔥🔥🔥🔥", update.ChatID(), nil)
 			return err
 		} else {
