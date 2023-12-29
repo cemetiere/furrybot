@@ -169,6 +169,18 @@ var OlegShipulinCommand = Command{
 		}
 	},
 }
+var AndreyALUCommand = Command{
+	CreateMessageFullMatchPredicate("/andrey_alu"),
+	func(bot *Bot, update *echotron.Update) error {
+		if update.Message.From.Username == "cemetiere" {
+			_, err := bot.SendMessage("ТЫ Андрей АЛУ 🔥🔥🔥🔥🔥", update.ChatID(), nil)
+			return err
+		} else {
+			_, err := bot.SendMessage("ты не Андрей АЛУ 😿", update.ChatID(), nil)
+			return err
+		}
+	},
+}
 
 // var Fuck = Command{
 // 	CreateMessageFullMatchPredicate("fuck"),
