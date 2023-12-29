@@ -15,6 +15,7 @@ var commandsList = []Command{
 	ShowRepositorySelectionCommand,
 	SelectRepositoryCommand,
 	OlegShipulinCommand,
+	AndreyALUCommand,
 	FemboyRegisterCommand,
 	ChooseTodaysFemboyCommand,
 	ShowLeaderboardCommand,
